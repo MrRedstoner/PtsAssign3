@@ -1,18 +1,25 @@
 from typing import Set
 
+import requests
+
 
 class Requester:
+    def __init__(self, host: str):
+        self._host = host
+
     # gets connections from server `from_port`
     def get_connections_from(self, from_port: int) -> Set[int]:
-        pass
+        r = requests.get(f'http://{self._host}:{from_port}/')
+        return set(map(int, r.content.decode("UTF-8").split(",")))
 
     # adds `to_port` to connections of `from_port`
-    def add_connection(self, from_port: int, to_port: int) -> bool:
-        pass
+    def add_connection(self, from_port: int, to_port: int) -> None:
+        _ = requests.get(f'http://{self._host}:{from_port}/new?port={to_port}')
 
     # adds connections both ways
-    def add_connection_bidi(self, port0: int, port1: int) -> bool:
-        return self.add_connection(port0, port1) and self.add_connection(port1, port0)
+    def add_connection_bidi(self, port0: int, port1: int) -> None:
+        self.add_connection(port0, port1)
+        self.add_connection(port1, port0)
 
 
 class NodeManager:
