@@ -1,7 +1,6 @@
 import asyncio
 import aiohttp
 from typing import Set
-import requests
 
 
 async def fetch(session, url):
@@ -14,9 +13,10 @@ class Requester:
         self._host = host
 
     # gets connections from server `from_port`
-    def get_connections_from(self, from_port: int) -> Set[int]:
-        r = requests.get(f'http://{self._host}:{from_port}/')
-        return set(map(int, r.content.decode("UTF-8").split(",")))
+    async def get_connections_from(self, from_port: int) -> Set[int]:
+        async with aiohttp.ClientSession() as session:
+            r = await fetch(session, f'http://{self._host}:{from_port}/')
+            return set(map(int, r.split(",")))
 
     # adds `to_port` to connections of `from_port`
     async def add_connection(self, from_port: int, to_port: int) -> None:
@@ -37,7 +37,7 @@ class NodeManager:
         await self._requester.add_connection_bidi(v0, v1)
 
     async def complete_neighbourhood(self, start: int):
-        nodes = list(self._requester.get_connections_from(start))
+        nodes = list(await self._requester.get_connections_from(start))
         tasks = list()
         for x in range(len(nodes)):
             for y in range(x + 1, len(nodes)):
