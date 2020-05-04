@@ -27,11 +27,10 @@ class NodeManager:
         self._requester = requester
 
     def complete_neighbourhood(self, start: int):
-        nodes = self._requester.get_connections_from(start)
-        for x in nodes:
-            for y in nodes:
-                if x != y:
-                    self._requester.add_connection_bidi(x, y)
+        nodes = list(self._requester.get_connections_from(start))
+        for x in range(len(nodes)):
+            for y in range(x+1,len(nodes)):
+                self._requester.add_connection_bidi(nodes[x], nodes[y])
 
     async def climb_degree(self, start: int):
         pass
