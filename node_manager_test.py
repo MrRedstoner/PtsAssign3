@@ -41,7 +41,7 @@ class MyTestCase(unittest.TestCase):
     def _assert_graph(self, graph: dict, req: MockRequester):
         for key, values in graph.items():
             for value in values:
-                self.assertTrue(req.is_connected(key, value))
+                self.assertTrue(req.is_connected(key, value), f'{key} to {value} missing')
 
     def test_complete_neighbourhood(self):
         req = MockRequester({
@@ -67,7 +67,26 @@ class MyTestCase(unittest.TestCase):
         }, req)
 
     def test_concurrent_execution(self):
-        pass
+        req = MockRequester({
+            0: {1, 2, 3, 4, 5, 6, 7},
+            1: set(),
+            2: set(),
+            3: set(),
+            4: set(),
+            5: set(),
+            6: set(),
+            7: set()
+        }, add_sleep=1)
+
+        nm = NodeManager(req)
+
+        try:
+            # 7 * 6 / 2 = 21 connections to be added
+            asyncio.get_event_loop().run_until_complete(asyncio.wait_for(nm.complete_neighbourhood(0), timeout=5))
+        except asyncio.TimeoutError:
+            self.fail("Timeout reached!")
+
+        self._assert_graph({i: (set(range(1, 8)) - {i}) for i in range(1, 8)}, req)
 
     def test_climb_degree(self):
         pass
