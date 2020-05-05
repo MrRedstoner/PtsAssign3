@@ -1,5 +1,6 @@
 import asyncio
 import itertools
+
 import aiohttp
 from typing import Set, Tuple
 
@@ -53,6 +54,25 @@ class NodeManager:
         await asyncio.gather(*map(self._add_bidi, itertools.combinations(nodes, 2)))
 
     async def climb_degree(self, start: int):
+        # maps port to connections, if known, to avoid repeatedly requesting the same information
+        degrees = dict()
+        degrees[start] = await self._requester.get_connections_from(start)
+
+        while True:
+            # find max neighbor
+            max_port = start
+            print(str(degrees[start]))
+            for port in degrees[start]:
+                if port not in degrees:
+                    degrees[port] = await self._requester.get_connections_from(port)
+                if len(degrees[port]) > len(degrees[max_port]):
+                    max_port = port
+
+            # go there if we're not there
+            if max_port == start:
+                break
+            start = max_port
+
         pass
 
     async def distance4(self, start: int):
