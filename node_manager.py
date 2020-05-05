@@ -1,6 +1,7 @@
 import asyncio
+import itertools
 import aiohttp
-from typing import Set
+from typing import Set, Tuple
 
 
 async def _create_persistent_session():
@@ -44,16 +45,12 @@ class NodeManager:
     def __init__(self, requester: Requester):
         self._requester = requester
 
-    async def _add_bidi(self, v0: int, v1: int):
-        await self._requester.add_connection_bidi(v0, v1)
+    async def _add_bidi(self, ports: Tuple[int, int]):
+        await self._requester.add_connection_bidi(ports[0], ports[1])
 
     async def complete_neighbourhood(self, start: int):
-        nodes = list(await self._requester.get_connections_from(start))
-        tasks = list()
-        for x in range(len(nodes)):
-            for y in range(x + 1, len(nodes)):
-                tasks.append(self._add_bidi(nodes[x], nodes[y]))
-        await asyncio.gather(*tasks)
+        nodes = await self._requester.get_connections_from(start)
+        await asyncio.gather(*map(self._add_bidi, itertools.combinations(nodes, 2)))
 
     async def climb_degree(self, start: int):
         pass
