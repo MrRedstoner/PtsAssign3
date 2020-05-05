@@ -76,7 +76,21 @@ class NodeManager:
                 break
             start = max_port
 
-        pass
+        return max_port
+
+    # gets all that are exactly 1 from this and not present in prev
+    async def _next_dist(self, prev: Set[int], this: Set[int]) -> Set[int]:
+        out = set()
+        for port in this:
+            ports = await self._requester.get_connections_from(port)
+            out.update(filter(lambda x: x not in this, filter(lambda x: x not in prev, ports)))
+        return out
 
     async def distance4(self, start: int):
-        pass
+        prev = set()
+        this = {start}
+        for i in range(4):
+            next_ = await self._next_dist(prev, this)
+            prev |= this
+            this = next_
+        return this
