@@ -18,7 +18,7 @@ class Requester:
         self._session = _get_persistent_session()
 
     def __del__(self):
-        with self._session:
+        async with self._session:
             pass
 
     @staticmethod
