@@ -61,7 +61,6 @@ class NodeManager:
         while True:
             # find max neighbor
             max_port = start
-            print(str(degrees[start]))
             for port in degrees[start]:
                 if port not in degrees:
                     degrees[port] = await self._requester.get_connections_from(port)

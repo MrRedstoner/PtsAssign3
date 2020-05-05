@@ -89,7 +89,24 @@ class MyTestCase(unittest.TestCase):
         self._assert_graph({i: (set(range(1, 8)) - {i}) for i in range(1, 8)}, req)
 
     def test_climb_degree(self):
-        pass
+        # intended path:
+        # 0 -> 2 (largest) -> 9 (largest) -> 4 (smaller number than 7) -> 3 (smaller number than 4)-> 6 (larger), stop
+        req = MockRequester({
+            0: {1, 2},
+            1: {0},
+            2: {0, 1, 9},
+            3: {0, 1, 2, 4, 6},
+            4: {1, 2, 3, 7, 9},
+            6: {1, 2, 3, 4, 5, 7, 8, 9},
+            7: {1, 2, 3, 4, 9},
+            9: {0, 1, 4, 7}
+        })
+
+        nm = NodeManager(req)
+
+        output = asyncio.get_event_loop().run_until_complete(nm.climb_degree(0))
+
+        self.assertEqual(6, output)
 
     def test_distance4(self):
         pass
