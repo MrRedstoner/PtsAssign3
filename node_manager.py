@@ -80,11 +80,9 @@ class NodeManager:
 
     # gets all that are exactly 1 from this and not present in prev
     async def _next_dist(self, prev: Set[int], this: Set[int]) -> Set[int]:
-        out = set()
-        for port in this:
-            ports = await self._requester.get_connections_from(port)
-            out.update(filter(lambda x: x not in this, filter(lambda x: x not in prev, ports)))
-        return out
+        unwanted = prev | this
+        tmp = await asyncio.gather(*map(self._requester.get_connections_from, this))
+        return set(filter(lambda x: x not in unwanted, itertools.chain(*tmp)))
 
     async def distance4(self, start: int):
         prev = set()
