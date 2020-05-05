@@ -109,7 +109,28 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(6, output)
 
     def test_distance4(self):
-        pass
+        # intended expansion
+        # dist 0: 0
+        # dist 1: 1 2 3
+        # dist 2: 4 5
+        # dist 3: 6 7
+        # dist 4: 8 9 10
+        req = MockRequester({
+            0: {1, 2, 3},
+            1: set(),  # path that dies out
+            2: {0, 1},  # paths that return
+            3: {4, 5, 2},
+            4: {5, 6},
+            5: {0, 7},
+            6: {6, 9},  # path loop
+            7: {8, 10}
+        })
+
+        nm = NodeManager(req)
+
+        output = asyncio.get_event_loop().run_until_complete(nm.distance4(0))
+
+        self.assertEqual({8, 9, 10}, output)
 
 
 if __name__ == '__main__':
