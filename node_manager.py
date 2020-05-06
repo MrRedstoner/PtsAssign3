@@ -49,6 +49,10 @@ class NodeManager:
     async def _add_bidi(self, ports: Tuple[int, int]):
         await self._requester.add_connection_bidi(ports[0], ports[1])
 
+    # per https://en.wikipedia.org/wiki/Complete_graph:
+    # A complete digraph is a directed graph in which every pair of distinct vertices
+    # is connected by a pair of unique edges (one in each direction).
+    # therefore self-loops aren't added if not present already
     async def complete_neighbourhood(self, start: int):
         nodes = await self._requester.get_connections_from(start)
         await asyncio.gather(*map(self._add_bidi, itertools.combinations(nodes, 2)))
