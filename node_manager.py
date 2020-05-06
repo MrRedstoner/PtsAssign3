@@ -65,9 +65,13 @@ class NodeManager:
         while True:
             # find max neighbor
             max_port = start
+
+            needed = list(filter(lambda x: x not in degrees, degrees[start]))
+            results = await asyncio.gather(*map(self._requester.get_connections_from, needed))
+            for port, result in zip(needed, results):
+                degrees[port] = result
+
             for port in degrees[start]:
-                if port not in degrees:
-                    degrees[port] = await self._requester.get_connections_from(port)
                 if len(degrees[port]) >= len(degrees[max_port]):
                     if len(degrees[port]) == len(degrees[max_port]):
                         max_port = min(port, max_port)
