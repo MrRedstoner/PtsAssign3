@@ -1,9 +1,15 @@
 import asyncio
 import unittest
 from collections import defaultdict
+from threading import Condition, Thread
 from typing import Set
 
+from initialize_nodes import do_stuff
 from node_manager import Requester, NodeManager
+
+
+def _run(coroutine):
+    return asyncio.get_event_loop().run_until_complete(coroutine)
 
 
 # maintains graph as dict of sets, doesn't network
@@ -37,7 +43,7 @@ class MockRequester(Requester):
         return to_port in self._graph[from_port]
 
 
-class MyTestCase(unittest.TestCase):
+class OfflineTestCase(unittest.TestCase):
     def _assert_graph(self, graph: dict, req: MockRequester):
         for key, values in graph.items():
             for value in values:
@@ -57,7 +63,7 @@ class MyTestCase(unittest.TestCase):
 
         nm = NodeManager(req)
 
-        asyncio.get_event_loop().run_until_complete(nm.complete_neighbourhood(0))
+        _run(nm.complete_neighbourhood(0))
 
         self._assert_graph({
             1: {2, 4, 5},
@@ -82,7 +88,7 @@ class MyTestCase(unittest.TestCase):
 
         try:
             # 7 * 6 / 2 = 21 connections to be added
-            asyncio.get_event_loop().run_until_complete(asyncio.wait_for(nm.complete_neighbourhood(0), timeout=5))
+            _run(asyncio.wait_for(nm.complete_neighbourhood(0), timeout=5))
         except asyncio.TimeoutError:
             self.fail("Timeout reached!")
 
@@ -104,7 +110,7 @@ class MyTestCase(unittest.TestCase):
 
         nm = NodeManager(req)
 
-        output = asyncio.get_event_loop().run_until_complete(nm.climb_degree(0))
+        output = _run(nm.climb_degree(0))
 
         self.assertEqual(6, output)
 
@@ -128,9 +134,66 @@ class MyTestCase(unittest.TestCase):
 
         nm = NodeManager(req)
 
-        output = asyncio.get_event_loop().run_until_complete(nm.distance4(0))
+        output = _run(nm.distance4(0))
 
         self.assertEqual({8, 9, 10}, output)
+
+
+class NetworkTestCases(unittest.TestCase):
+
+    def test(self):
+        # OfflineTestCase checks how Requester is used
+        # Now just verify that Requester works correctly
+        graph = {  # do_stuff creates both connections!
+            0: {1, 4, 7},
+            1: {0, 4, 5, 6},
+            2: {3, 5},
+            3: {2, 4},
+            4: {0, 1, 3},
+            5: {1, 2, 7},
+            6: {1, 7},
+            7: {0, 5, 6}
+        }
+
+        base = 8000
+        graph = {k + base: {v + base for v in val} for k, val in graph.items()}
+
+        condition_ready = Condition()
+        condition_done = Condition()
+        with condition_ready:
+            with condition_done:
+                thread = Thread(target=do_stuff, daemon=True, args=[
+                    "localhost",
+                    range(base, base + 8),
+                    {(k, v) for k, val in graph.items() for v in val},
+                    condition_ready,
+                    condition_done])
+                thread.start()
+
+                req = Requester("localhost")
+
+                # wait until full initialization
+                condition_ready.wait()
+                condition_done.notify()
+
+                # check get
+                for port in range(base, base + 8):
+                    self.assertEqual(graph[port], _run(req.get_connections_from(port)))
+
+                # check add
+                _run(req.add_connection(0 + base, 5 + base))
+                graph[0 + base].add(5 + base)
+
+                for port in range(base, base + 8):
+                    self.assertEqual(graph[port], _run(req.get_connections_from(port)))
+
+                # check bidi add
+                _run(req.add_connection_bidi(1 + base, 2 + base))
+                graph[1 + base].add(2 + base)
+                graph[2 + base].add(1 + base)
+
+                for port in range(base, base + 8):
+                    self.assertEqual(graph[port], _run(req.get_connections_from(port)))
 
 
 if __name__ == '__main__':
