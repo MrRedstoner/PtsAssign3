@@ -82,8 +82,7 @@ class NodeManager:
         return max_port
 
     # gets all that are exactly 1 from this and not present in prev
-    async def _next_dist(self, prev: Set[int], this: Set[int]) -> Set[int]:
-        unwanted = prev | this
+    async def _next_dist(self, unwanted: Set[int], this: Set[int]) -> Set[int]:
         tmp = await asyncio.gather(*map(self._requester.get_connections_from, this))
         return set(filter(lambda x: x not in unwanted, itertools.chain(*tmp)))
 
@@ -91,7 +90,6 @@ class NodeManager:
         prev = set()
         this = {start}
         for i in range(4):
-            next_ = await self._next_dist(prev, this)
             prev |= this
-            this = next_
+            this = await self._next_dist(prev, this)
         return this
